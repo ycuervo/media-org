@@ -1,0 +1,8 @@
+#ignore intellij project tracking file
+*.iws
+
+#ignore compiled code
+target/
+
+#ignore deployment packagin
+package/

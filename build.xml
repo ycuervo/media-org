@@ -1,0 +1,71 @@
+<project name="MediaOrg" default="default" basedir=".">
+
+    <property name="build.dir" value="target/"/>
+    <property name="src.dir" value="src/"/>
+    <property name="lib.dir" value="libs"/>
+    <property name="package.dir" value="package"/>
+    <property name="title" value="media-org"/>
+    <property name="debug" value="on"/>
+    <property name="failonerror" value="false"/>
+
+    <property name="ycb.jar" value="${build.dir}media-org.jar"/>
+
+    <property name="cp_jars" value="${lib.dir}/exiftool-lib-1.1.jar
+                                    ;${lib.dir}/metadata-extractor-2.6.4.jar
+                                    ;${lib.dir}/xmpcore.jar
+                                    "/>
+
+
+    <target name="default" depends="clean,compile">
+    </target>
+
+    <!-- INIT -->
+    <target name="init">
+        <tstamp>
+            <format property="TODAY" pattern="MMMM d, yyyy hh:mm aa" locale="en"/>
+        </tstamp>
+        <mkdir dir="${build.dir}"/>
+    </target>
+
+    <!--  BUILD STUFF -->
+    <target name="compile" depends="init">
+        <javac classpath="${cp_jars}"
+               srcdir="."
+               destdir="${build.dir}"
+               includes="${src.dir}/**"
+               debug="${debug}"
+               failonerror="${failonerror}"/>
+    </target>
+
+    <!-- JAR -->
+    <target name="jar" depends="clean,compile">
+        <manifest file="${build.dir}/${title}.mf">
+            <attribute name="Company-Name" value="YCB Systems"/>
+            <attribute name="App-Title" value="Media Org"/>
+            <attribute name="Built-By" value="Yuri Cuervo"/>
+            <attribute name="Built-Date" value="${TODAY}"/>
+        </manifest>
+        <jar jarfile="${build.dir}/${title}.jar"
+             basedir="${build.dir}"
+             includes="*,${build.dir}/**"
+             manifest="${build.dir}/${title}.mf"/>
+    </target>
+
+    <target name="package" depends="jar">
+        <copy todir="${package.dir}">
+            <fileset dir="${lib.dir}" includes="**/*" excludes="*javadoc*,*sources*">
+                <filename name="*.jar" casesensitive="false"/>
+            </fileset>
+            <fileset dir="${build.dir}" includes="**/*">
+                <filename name="*.jar" casesensitive="false"/>
+            </fileset>
+        </copy>
+
+    </target>
+
+    <!-- CLEAN -->
+    <target name="clean">
+        <delete dir="${build.dir}"/>
+        <delete dir="${package.dir}"/>
+    </target>
+</project>

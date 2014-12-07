@@ -1,14 +1,12 @@
 <project name="MediaOrg" default="default" basedir=".">
 
-    <property name="build.dir" value="target/"/>
-    <property name="src.dir" value="src/"/>
+    <property name="build.dir" value="target"/>
+    <property name="src.dir" value="src"/>
     <property name="lib.dir" value="libs"/>
     <property name="package.dir" value="package"/>
     <property name="title" value="media-org"/>
     <property name="debug" value="on"/>
     <property name="failonerror" value="false"/>
-
-    <property name="ycb.jar" value="${build.dir}media-org.jar"/>
 
     <property name="cp_jars" value="${lib.dir}/exiftool-lib-1.1.jar
                                     ;${lib.dir}/metadata-extractor-2.6.4.jar

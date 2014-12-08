@@ -6,6 +6,7 @@ import com.thebuzzmedia.exiftool.ExifTool;
 
 import java.io.File;
 import java.io.IOException;
+import java.security.MessageDigest;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
@@ -18,112 +19,39 @@ import java.util.*;
  */
 public class MediaOrg
 {
-    static ExifTool exifTool;
+    private static ExifTool exifTool;
 
     //set via -f parameter
-    static File DIR_FROM;
+    private static File DIR_FROM;
     //set via -t parameter
-    static File DIR_TO;
+    private static File DIR_TO;
 
-    static Calendar calendar = new GregorianCalendar();
-    static SimpleDateFormat formatFileOut = new SimpleDateFormat("yyyyMMdd_kkmm");
+    private static Calendar calendar = new GregorianCalendar();
+    private static SimpleDateFormat formatFileOut = new SimpleDateFormat("yyyyMMdd_kkmm");
 
-    static SimpleDateFormat formatsYYYY[] = new SimpleDateFormat[]{
+    private static SimpleDateFormat formatsYYYY[] = new SimpleDateFormat[]{
             new SimpleDateFormat("yyyy:MM:dd kk:mm:ss"),
             new SimpleDateFormat("yyyyMMdd_kkmm"),
             new SimpleDateFormat("yyyy:MM:dd"),
             new SimpleDateFormat("yyyy-MM-dd"),
             new SimpleDateFormat("yyyyMMdd")};
 
-    static SimpleDateFormat formatsMM[] = new SimpleDateFormat[]{
+    private static SimpleDateFormat formatsMM[] = new SimpleDateFormat[]{
             new SimpleDateFormat("MM.dd.yyyy kk:mm"), new SimpleDateFormat("MM-dd-yyyy")};
 
-    static SimpleDateFormat formatsOthers[] = new SimpleDateFormat[]{
-            new SimpleDateFormat("E MMM d kk:mm:ss z yyyy"),
-            new SimpleDateFormat("EEEE, MMMM dd, yyyy")};
+    private static SimpleDateFormat formatsOthers[] = new SimpleDateFormat[]{
+            new SimpleDateFormat("E MMM d kk:mm:ss z yyyy"), new SimpleDateFormat("EEEE, MMMM dd, yyyy")};
 
-    static NumberFormat yearFormat = new DecimalFormat("0000");
-    static NumberFormat monthFormat = new DecimalFormat("00");
-    static NumberFormat dayFormat = new DecimalFormat("00");
-    static NumberFormat counterFormat = new DecimalFormat("00");
+    private static NumberFormat yearFormat = new DecimalFormat("0000");
+    private static NumberFormat monthFormat = new DecimalFormat("00");
+    private static NumberFormat dayFormat = new DecimalFormat("00");
+    private static NumberFormat counterFormat = new DecimalFormat("00");
 
-    public static void main(String[] args)
-    {
-        System.out.println("Starting MediaOrg...");
-        processArgs(args);
-
-        if (DIR_FROM == null || DIR_TO == null)
-        {
-            System.out.println("From and To directories required.\n" +
-                               "Usage:\n" +
-                               "  java MediaOrg -f \\\\path\\from -t \\\\path\\to");
-            System.exit(0);
-        }
-
-        System.out.println("Supported date formats:");
-        for (SimpleDateFormat format : formatsYYYY)
-        {
-            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
-        }
-        for (SimpleDateFormat format : formatsMM)
-        {
-            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
-        }
-        for (SimpleDateFormat format : formatsOthers)
-        {
-            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
-        }
-
-        exifTool = new ExifTool(ExifTool.Feature.STAY_OPEN);
-        System.out.println("ExifTool ready.");
-
-        processDir(DIR_FROM);
-    }
-
-    private static void processArgs(String args[])
-    {
-        if (args.length > 1)
-        {
-            processArgPair(args[0], args[1]);
-        }
-        if (args.length > 3)
-        {
-            processArgPair(args[2], args[3]);
-        }
-    }
-
-    private static void processArgPair(String key, String value)
-    {
-        if (key.equalsIgnoreCase("-f"))
-        {
-            DIR_FROM = new File(value);
-            if (!DIR_FROM.exists() || !DIR_FROM.isDirectory())
-            {
-                DIR_FROM = null;
-                System.err.println("Invalid From Path: " + value);
-            }
-            else
-            {
-                System.out.println("From Path Set: " + DIR_FROM.getAbsolutePath());
-            }
-        }
-        else if (key.equalsIgnoreCase("-t"))
-        {
-            DIR_TO = new File(value);
-            if (!DIR_TO.exists() || !DIR_TO.isDirectory())
-            {
-                System.err.println("Invalid To Path: " + value);
-                DIR_TO = null;
-            }
-            else
-            {
-                System.out.println("  To Path Set: " + DIR_TO.getAbsolutePath());
-            }
-        }
-    }
+    private static String md5 = "";
 
     private static void processDir(File directory)
     {
+        System.out.println("Processing directory: " + directory.getAbsolutePath());
         File fileList[] = directory.listFiles();
 
         if (fileList != null)
@@ -136,7 +64,7 @@ public class MediaOrg
                 {
                     processDir(file);
 
-                    if(file.list().length == 0 && !file.getAbsolutePath().equalsIgnoreCase(DIR_FROM.getAbsolutePath()))
+                    if (file.list().length == 0 && !file.getAbsolutePath().equalsIgnoreCase(DIR_FROM.getAbsolutePath()))
                     {
                         //directory is empty... delete it
                         file.delete();
@@ -438,7 +366,6 @@ public class MediaOrg
         return fileRenamedTo;
     }
 
-
     private static String buildFolder(int year, int month, int day)
     {
         String folderBuilt = null;
@@ -464,7 +391,6 @@ public class MediaOrg
 
         return folderBuilt;
     }
-
 
     private static String getNewName(String folder, File file, Date date)
     {
@@ -574,5 +500,173 @@ public class MediaOrg
             }
         }
         return null;
+    }
+
+    private static void processArgs(String args[])
+    {
+        if (args.length > 1)
+        {
+            processArgPair(args[0], args[1]);
+        }
+        if (args.length > 3)
+        {
+            processArgPair(args[2], args[3]);
+        }
+        if (args.length > 5)
+        {
+            processArgPair(args[4], args[5]);
+        }
+    }
+
+    private static void processArgPair(String key, String value)
+    {
+        if (key.equalsIgnoreCase("-f"))
+        {
+            DIR_FROM = new File(value);
+            if (!DIR_FROM.exists() || !DIR_FROM.isDirectory())
+            {
+                DIR_FROM = null;
+                System.err.println("Invalid From Path: " + value);
+            }
+            else
+            {
+                System.out.println("From Path Set: " + DIR_FROM.getAbsolutePath());
+            }
+        }
+        else if (key.equalsIgnoreCase("-t"))
+        {
+            DIR_TO = new File(value);
+            if (!DIR_TO.exists() || !DIR_TO.isDirectory())
+            {
+                System.err.println("Invalid To Path: " + value);
+                DIR_TO = null;
+            }
+            else
+            {
+                System.out.println("  To Path Set: " + DIR_TO.getAbsolutePath());
+            }
+        }
+    }
+
+    private static boolean directoryHasChanged(File dir)
+    {
+        System.out.println("   Last MD5: " + md5);
+
+        StringBuilder content = new StringBuilder();
+
+        buildDirectoryContent(dir, content);
+
+        String currentMD5 = hashString(content.toString(), "MD5");
+
+        System.out.println("Current MD5: " + currentMD5);
+        if (md5.equals(currentMD5))
+        {
+            return false;
+        }
+        else
+        {
+            md5 = currentMD5;
+            return true;
+        }
+    }
+
+    private static void buildDirectoryContent(File directory, StringBuilder content)
+    {
+        content.append("D-").append(directory.getName()).append("[").append(directory.length()).append("]");
+
+        File fileList[] = directory.listFiles();
+        if (fileList != null)
+        {
+            Arrays.sort(fileList);
+
+            for (File file : fileList)
+            {
+                if (file.isDirectory())
+                {
+                    buildDirectoryContent(file, content);
+                }
+                else
+                {
+                    content.append("F-").append(file.getName()).append("[").append(file.length()).append("]");
+                }
+            }
+        }
+    }
+
+    private static String hashString(String message, String algorithm)
+    {
+        String hashValue = String.valueOf(System.currentTimeMillis());
+        try
+        {
+            MessageDigest digest = MessageDigest.getInstance(algorithm);
+            byte[] hashedBytes = digest.digest(message.getBytes("UTF-8"));
+
+            return convertByteArrayToHexString(hashedBytes);
+        }
+        catch (Exception ex)
+        {
+            ex.printStackTrace();
+        }
+
+        return hashValue;
+    }
+
+    private static String convertByteArrayToHexString(byte[] arrayBytes)
+    {
+        StringBuilder stringBuffer = new StringBuilder();
+        for (byte arrayByte : arrayBytes)
+        {
+            stringBuffer.append(Integer.toString((arrayByte & 0xff) + 0x100, 16).substring(1));
+        }
+        return stringBuffer.toString();
+    }
+
+    public static void main(String[] args)
+    {
+        System.out.println("Starting MediaOrg...");
+        processArgs(args);
+
+        if (DIR_FROM == null || DIR_TO == null)
+        {
+            System.out.println("Usage: java MediaOrg -f \\\\path\\from -t \\\\path\\to -d 10m\n" +
+                               "Monitor a -f directory and move media to -t directory.\n\n" +
+                               "-f  From directory. The directory to monitor.\n" +
+                               "-t  To directory. The directory to copy media to.\n");
+            System.exit(0);
+        }
+
+        System.out.println("Supported date formats:");
+        for (SimpleDateFormat format : formatsYYYY)
+        {
+            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
+        }
+        for (SimpleDateFormat format : formatsMM)
+        {
+            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
+        }
+        for (SimpleDateFormat format : formatsOthers)
+        {
+            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
+        }
+
+        exifTool = new ExifTool(ExifTool.Feature.STAY_OPEN);
+        System.out.println("ExifTool ready.");
+
+        System.out.println("Waiting for directory to stop changing.");
+        //wait until directory is not changing (Files or folders are not being written to it.
+        while (directoryHasChanged(DIR_FROM))
+        {
+            try
+            {
+                Thread.currentThread().sleep(5000);
+            }
+            catch (InterruptedException e)
+            {
+                System.err.println("Error in sleep thread.");
+            }
+            System.out.print(".");
+        }
+
+        processDir(DIR_FROM);
     }
 }

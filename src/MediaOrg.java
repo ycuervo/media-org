@@ -550,7 +550,6 @@ public class MediaOrg
 
     private static boolean directoryHasChanged(File dir)
     {
-        System.out.println("   Last MD5: " + md5);
 
         StringBuilder content = new StringBuilder();
 
@@ -558,7 +557,8 @@ public class MediaOrg
 
         String currentMD5 = hashString(content.toString(), "MD5");
 
-        System.out.println("Current MD5: " + currentMD5);
+//        System.out.println("   Last MD5: " + md5);
+//        System.out.println("Current MD5: " + currentMD5);
         if (md5.equals(currentMD5))
         {
             return false;
@@ -666,7 +666,7 @@ public class MediaOrg
             }
             System.out.print(".");
         }
-
+        System.out.println();
         processDir(DIR_FROM);
     }
 }

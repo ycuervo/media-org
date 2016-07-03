@@ -11,7 +11,12 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Calendar;
+import java.util.Collection;
+import java.util.Date;
+import java.util.GregorianCalendar;
+import java.util.Map;
 
 /**
  * Tool for organizing media.
@@ -254,12 +259,21 @@ public class MediaOrg
 
         try
         {
-            String fileName = file.getName();
+            String fileName = file.getName().toUpperCase();
 
-            //looking for file name yyyy-mm-dd... assuming first 10 characters are the date
             if (fileName.length() > 9)
             {
-                dateToUse = fileName.substring(0, 10);
+                if (fileName.startsWith("VID_") ||
+                    fileName.startsWith("IMG_"))
+                {
+                    //looking for file name VID_yyyymmdd_... assuming after VID_ is the date
+                    dateToUse = fileName.substring(4, 12);
+                }
+                else
+                {
+                    //looking for file name yyyy-mm-dd... assuming first 10 characters are the date
+                    dateToUse = fileName.substring(0, 10);
+                }
             }
         }
         catch (Exception e)

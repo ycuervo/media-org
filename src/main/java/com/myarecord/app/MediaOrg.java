@@ -1,22 +1,14 @@
-import com.drew.imaging.ImageMetadataReader;
-import com.drew.metadata.Directory;
-import com.drew.metadata.Metadata;
-import com.drew.metadata.Tag;
-import com.thebuzzmedia.exiftool.ExifTool;
+package com.myarecord.app;
 
 import java.io.File;
-import java.io.IOException;
 import java.security.MessageDigest;
 import java.text.DecimalFormat;
 import java.text.NumberFormat;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.GregorianCalendar;
-import java.util.Map;
 
 /**
  * Tool for organizing media.
@@ -24,33 +16,17 @@ import java.util.Map;
  */
 public class MediaOrg
 {
-    private static ExifTool exifTool;
-
     //set via -f parameter
     private static File DIR_FROM;
     //set via -t parameter
     private static File DIR_TO;
 
     private static Calendar calendar = new GregorianCalendar();
-    private static SimpleDateFormat formatFileOut = new SimpleDateFormat("yyyyMMdd_kkmm");
-
-    private static SimpleDateFormat formatsYYYY[] = new SimpleDateFormat[]{
-            new SimpleDateFormat("yyyy:MM:dd kk:mm:ss"),
-            new SimpleDateFormat("yyyyMMdd_kkmm"),
-            new SimpleDateFormat("yyyy:MM:dd"),
-            new SimpleDateFormat("yyyy-MM-dd"),
-            new SimpleDateFormat("yyyyMMdd")};
-
-    private static SimpleDateFormat formatsMM[] = new SimpleDateFormat[]{
-            new SimpleDateFormat("MM.dd.yyyy kk:mm"), new SimpleDateFormat("MM-dd-yyyy")};
-
-    private static SimpleDateFormat formatsOthers[] = new SimpleDateFormat[]{
-            new SimpleDateFormat("E MMM d kk:mm:ss z yyyy"), new SimpleDateFormat("EEEE, MMMM dd, yyyy")};
-
     private static NumberFormat yearFormat = new DecimalFormat("0000");
     private static NumberFormat monthFormat = new DecimalFormat("00");
     private static NumberFormat dayFormat = new DecimalFormat("00");
     private static NumberFormat counterFormat = new DecimalFormat("00");
+    private static SimpleDateFormat formatFileOut = new SimpleDateFormat("yyyyMMdd_kkmm");
 
     private static String md5 = "";
 
@@ -69,9 +45,11 @@ public class MediaOrg
                 {
                     processDir(file);
 
-                    if (file.list().length == 0 && !file.getAbsolutePath().equalsIgnoreCase(DIR_FROM.getAbsolutePath()))
+                    if (file.list().length == 0 &&
+                        !file.getAbsolutePath().equalsIgnoreCase(DIR_FROM.getAbsolutePath()))
                     {
                         //directory is empty... delete it
+                        //noinspection ResultOfMethodCallIgnored
                         file.delete();
                     }
                 }
@@ -80,148 +58,48 @@ public class MediaOrg
                     String fileNewName;
                     String fileOldName = file.getAbsolutePath();
 
-                    fileNewName = processByExifTool(file);
+                    fileNewName = processByMetaData(file);
                     if (fileNewName != null)
                     {
-                        System.out.println("ExifTool Handled: " + fileOldName + " -> " + fileNewName);
+                        System.out.println("MetaData Handled: " + fileOldName + " -> " + fileNewName);
                     }
                     else
                     {
-                        fileNewName = processByMetaData(file);
+                        fileNewName = processByFolderName(file);
                         if (fileNewName != null)
                         {
-                            System.out.println("MetaData Handled: " + fileOldName + " -> " + fileNewName);
+                            System.out.println("Folder Name Handled: " + fileOldName + " -> " + fileNewName);
                         }
                         else
                         {
-                            fileNewName = processByFolderName(file);
+                            fileNewName = processByFileName(file);
                             if (fileNewName != null)
                             {
-                                System.out.println("Folder Name Handled: " + fileOldName + " -> " + fileNewName);
+                                System.out.println("File Name Handled: " + fileOldName + " -> " + fileNewName);
                             }
                             else
                             {
-                                fileNewName = processByFileName(file);
+                                fileNewName = moveToUnknown(file);
                                 if (fileNewName != null)
                                 {
-                                    System.out.println("File Name Handled: " + fileOldName + " -> " + fileNewName);
+                                    System.out.println("Moved To Unknown: " + fileOldName + " -> " + fileNewName);
                                 }
                                 else
                                 {
-                                    fileNewName = moveToUnknown(file);
-                                    if (fileNewName != null)
-                                    {
-                                        System.out.println("Moved To Unknown: " + fileOldName + " -> " + fileNewName);
-                                    }
-                                    else
-                                    {
-                                        System.err.println(" File Skipped: " + fileOldName);
-                                    }
-
+                                    System.err.println(" File Skipped: " + fileOldName);
                                 }
+
                             }
                         }
                     }
                 }
             }
         }
-    }
-
-    private static String processByExifTool(File file)
-    {
-        String dateToUse = null;
-
-        Map<ExifTool.Tag, String> tagData = null;
-        try
-        {
-            tagData = exifTool.getImageMeta(file, ExifTool.Tag.DATE_TIME_ORIGINAL, ExifTool.Tag.GPS_TIMESTAMP);
-        }
-        catch (IOException e)
-        {
-            System.err.println("ExifTool Error Processing[" + file.getAbsolutePath() + "]");
-        }
-
-        if (tagData != null && tagData.containsKey(ExifTool.Tag.DATE_TIME_ORIGINAL))
-        {
-            dateToUse = tagData.get(ExifTool.Tag.DATE_TIME_ORIGINAL);
-        }
-        else if (tagData != null && tagData.containsKey(ExifTool.Tag.GPS_TIMESTAMP))
-        {
-            dateToUse = tagData.get(ExifTool.Tag.GPS_TIMESTAMP);
-        }
-
-        return resolveDateFound(file, dateToUse);
     }
 
     private static String processByMetaData(File file)
     {
-        String dateOriginal = "Date/Time Original";
-        String dateDigitized = "Date/Time Digitized";
-        String dateTime = "Date/Time Original";
-
-        String dateValueOriginal = null;
-        String dateValueDigitized = null;
-        String dateValueTime = null;
-        String dateValue = null;
-
-        String dateToUse = null;
-        try
-        {
-
-            Metadata metadata = ImageMetadataReader.readMetadata(file);
-
-            Iterable<Directory> tags = metadata.getDirectories();
-            for (Directory tag : tags)
-            {
-                Collection<Tag> tagList = tag.getTags();
-
-                for (Tag t : tagList)
-                {
-                    String tagName = t.getTagName();
-
-                    if (tagName.toUpperCase().contains("DATE"))
-                    {
-                        if (tagName.equalsIgnoreCase(dateOriginal))
-                        {
-                            dateValueOriginal = t.getDescription();
-                        }
-                        else if (tagName.equalsIgnoreCase(dateDigitized))
-                        {
-                            dateValueDigitized = t.getDescription();
-                        }
-                        else if (tagName.equalsIgnoreCase(dateTime))
-                        {
-                            dateValueTime = t.getDescription();
-                        }
-                        else
-                        {
-                            dateValue = t.getDescription();
-                        }
-                    }
-                }
-            }
-
-            if (dateValueOriginal != null)
-            {
-                dateToUse = dateValueOriginal;
-            }
-            else if (dateValueDigitized != null)
-            {
-                dateToUse = dateValueDigitized;
-            }
-            else if (dateValueTime != null)
-            {
-                dateToUse = dateValueTime;
-            }
-            else
-            {
-                dateToUse = dateValue;
-            }
-        }
-        catch (Exception e)
-        {
-            System.err.println("MetaData Error Processing[" + file.getAbsolutePath() + "]");
-        }
+        String dateToUse = MetadataReadUtil.getDateFromMetadata(file);
 
         return resolveDateFound(file, dateToUse);
     }
@@ -288,56 +166,7 @@ public class MediaOrg
     {
         String fileRenamedTo = null;
 
-        Date dateValue = null;
-
-        if (dateString != null)
-        {
-            if (dateString.matches("(19|20)\\d\\d.*"))
-            {
-                for (SimpleDateFormat format : formatsYYYY)
-                {
-                    try
-                    {
-                        dateValue = format.parse(dateString);
-                        break;
-                    }
-                    catch (ParseException e1)
-                    {
-                        dateValue = null;
-                    }
-                }
-            }
-            else if (dateString.matches("(0[1-9]|1[012]).*"))
-            {
-                for (SimpleDateFormat format : formatsMM)
-                {
-                    try
-                    {
-                        dateValue = format.parse(dateString);
-                        break;
-                    }
-                    catch (ParseException e1)
-                    {
-                        dateValue = null;
-                    }
-                }
-            }
-            else
-            {
-                for (SimpleDateFormat format : formatsOthers)
-                {
-                    try
-                    {
-                        dateValue = format.parse(dateString);
-                        break;
-                    }
-                    catch (ParseException e1)
-                    {
-                        dateValue = null;
-                    }
-                }
-            }
-        }
+        Date dateValue = DateParseUtil.resolveDate(dateString);
 
         if (dateValue == null)
         {
@@ -650,20 +479,9 @@ public class MediaOrg
         }
 
         System.out.println("Supported date formats:");
-        for (SimpleDateFormat format : formatsYYYY)
-        {
-            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
-        }
-        for (SimpleDateFormat format : formatsMM)
-        {
-            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
-        }
-        for (SimpleDateFormat format : formatsOthers)
-        {
-            System.out.println("  " + format.format(new Date(System.currentTimeMillis())));
-        }
+        DateParseUtil.printSupportedFormats();
 
-        exifTool = new ExifTool(ExifTool.Feature.STAY_OPEN);
+        //exifTool = new ExifTool(ExifTool.Feature.STAY_OPEN);
         System.out.println("ExifTool ready.");
 
         System.out.println("Waiting for directory to stop changing.");
@@ -672,7 +490,7 @@ public class MediaOrg
         {
             try
             {
-                Thread.currentThread().sleep(5000);
+                Thread.sleep(5000);
             }
             catch (InterruptedException e)
             {
